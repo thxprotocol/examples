@@ -35,11 +35,12 @@ async function createWalletCode(){
 }
 
 // Helper to verify payload signature
-function parsePayload(payload, signature, secret) {
+function constructEvent(payload, signature, secret) {
 	const hmac = crypto.createHmac('sha256', secret);
 	hmac.update(payload);
     const calculatedSignature = hmac.digest('base64');
-	if (signature === calculatedSignature) return JSON.parse(payload);
+	if (signature !== calculatedSignature) throw new Error('Failed signature verification')
+    return JSON.parse(payload);
 }
 
 // Helper to create HTML response
@@ -80,19 +81,35 @@ app.get('/connect', (req, res) => {
 
 // The registered endpoint which is invoked after a custom reward purchase
 app.post('/testhook', (req, res) => {
-    // Veries and parses the payload using the WEBHOOK_SIGNING_SECRET which you can get in Developer -> Webhooks
-    const data = parsePayload(req.body.payload, req.body.signature, WEBHOOK_SIGNING_SECRET);
+    let event;
+    try {
+        // Veries and parses the payload using the WEBHOOK_SIGNING_SECRET which you can get in Developer -> Webhooks
+        event = constructEvent(req.body.payload, req.body.signature, WEBHOOK_SIGNING_SECRET);
+    } catch (error) {
+        console.error(error);
+        return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+
+    // Handle the event type
+    switch(event.type) {
+        case 'reward_custom.paid': {
+
+            // Simulates account query
+            console.log('Match account');
+            const accountId = accounts.findIndex((a)=> event.wallets.includes(a.walletCode));
+            console.log(accounts[accountId]);
     
-    // Simulates account query
-    console.log('Match account');
-    const accountId = accounts.findIndex((a)=> data.wallets.includes(a.walletCode));
-    console.log(accounts[accountId]);
-
-    // Simulates Solar Crystal transfer
-    console.log('Transfer Solar Crystals');
-    accounts[accountId].balance += 5000;
-
-    res.status(200).end();
+            // Simulates Solar Crystal transfer
+            console.log('Transfer Solar Crystals');
+            accounts[accountId].balance += 5000;
+            break
+        }
+        default :{
+            console.log(`Unhandled event type ${event.type}`)
+        }
+    }
+    
+    res.send();
 });
 
 app.listen(port, hostname, () => {
