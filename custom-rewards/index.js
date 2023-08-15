@@ -97,11 +97,13 @@ app.post('/testhook', (req, res) => {
             // Simulates account query
             console.log('Match account');
             const accountId = accounts.findIndex((a)=> event.wallets.includes(a.walletCode));
+            if (!accounts[accountId]) break;
             console.log(accounts[accountId]);
     
             // Simulates Solar Crystal transfer
             console.log('Transfer Solar Crystals');
             accounts[accountId].balance += 5000;
+            console.log(accounts[accountId]);
             break
         }
         default :{
