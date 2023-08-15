@@ -14,7 +14,7 @@ const accounts = [
 
 async function createWalletCode(){
     try {
-        const { data } = await axios.post(process.env.WEBHOOK_WALLET_ONBOARDING);
+        const { data } = await axios.post(process.env.WEBHOOK_VIRTUAL_WALLETS);
         return data.code;
     } catch (error) {
         console.error(error)
