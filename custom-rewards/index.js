@@ -3,36 +3,17 @@ const WEBHOOK_SIGNING_SECRET = process.env.WEBHOOK_SIGNING_SECRET;
 const WIDGET_SCRIPT = '<script src="https://localhost:3000/v1/widget/64da241ac46a718f2ef099b9.js"></script>'
 
 const crypto = require('crypto');
-const axios = require('axios');
-const https = require('https');
 const express = require('express');
 const bodyParser = require('body-parser');
 const hostname = '127.0.0.1';
 const port = 3333;
-const accounts = [
-    { 
-        email: 'peter@thx.network', 
-        walletCode: '',
-        balance: 0,
-    }
-]
-
-// Disable cert validation
-const axiosInstance = axios.create({
-    httpsAgent: new https.Agent({
-        rejectUnauthorized: false
-    })    
-});
-
-// Helper to create wallet code for account
-async function createWalletCode(){
-    try {
-        const { data } = await axiosInstance.post(process.env.WEBHOOK_VIRTUAL_WALLETS);
-        return data.code;
-    } catch (error) {
-        console.error(error)
-    }
-}
+const accounts = [{ email: 'peter@thx.network', identity: '', balance: 0 }]
+ 
+// Init THXAPIClient
+const thx = new THXAPIClient({
+    clientId: process.env.THX_CLIENT_ID,
+    clientSecret: process.env.THX_CLIENT_SECRET
+})
 
 // Helper to verify payload signature
 function constructEvent(payload, signature, secret) {
@@ -62,10 +43,10 @@ app.use(bodyParser.json());
 
 // Mock a sign in and store the virtual wallet code
 app.get('/signin', async(req, res) => {
-    if (!accounts[0].walletCode) {
-        accounts[0].walletCode = await createWalletCode(); 
+    if (!accounts[0].identity) {
+        accounts[0].identity = await thx.identity.create(); 
     }
-    res.status(200).send(html(`Wallet Code: ${accounts[0].walletCode}`));
+    res.status(200).send(html(`Wallet Code: ${accounts[0].identity}`));
 });
 
 // Mock account details view
@@ -75,7 +56,7 @@ app.get('/account', async(req, res) => {
 
 // Mock virtual wallet connect button
 app.get('/connect', (req, res) => {
-    const walletConnectLink = `<a target="_blank" href="http://127.0.0.1:3333/connect?thx_widget_path=/w/${accounts[0].walletCode}">Connect Virtual Wallet</a>`
+    const walletConnectLink = `<a target="_blank" href="http://127.0.0.1:3333/connect?thx_widget_path=/w/${accounts[0].identity}">Connect Identity</a>`
     res.status(200).send(html(walletConnectLink));
 });
 
@@ -96,7 +77,7 @@ app.post('/testhook', (req, res) => {
 
             // Simulates account query
             console.log('Match account');
-            const accountId = accounts.findIndex((a)=> event.wallets.includes(a.walletCode));
+            const accountId = accounts.findIndex((a)=> event.identities.includes(a.identity));
             if (!accounts[accountId]) break;
             console.log(accounts[accountId]);
     
